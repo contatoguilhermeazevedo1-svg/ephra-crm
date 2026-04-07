@@ -14,7 +14,7 @@ import SettingsPage from './Settings/SettingsPage';
 import EphraConnect from './Connect/EphraConnect';
 
 const EphraCRM: React.FC = () => {
-  const { user, logout, pipelines, activePipelineId, setActivePipeline, fetchData, isLoading, addPipeline, checkUser } = useEphraStore();
+  const { user, signOut, pipelines, activePipelineId, setActivePipeline, fetchData, isLoading, addPipeline, checkUser } = useEphraStore();
   const [activeTab, setActiveTab] = useState('pipeline');
 
   useEffect(() => {
@@ -41,9 +41,9 @@ const EphraCRM: React.FC = () => {
         </div>
 
         <div style={{ padding: '15px', backgroundColor: '#111', borderRadius: '15px', marginBottom: '30px', border: '1px solid #1a1a1a' }}>
-          <p style={{ margin: 0, fontSize: '14px', fontWeight: 'bold' }}>{user.name}</p>
+          <p style={{ margin: 0, fontSize: '14px', fontWeight: 'bold' }}>{user.user_metadata?.name || 'Membro Ephra'}</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '5px' }}>
-            <span style={{ fontSize: '11px', color: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.1)', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>{user.role}</span>
+            <span style={{ fontSize: '11px', color: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.1)', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>{user.user_metadata?.role || 'SDR'}</span>
           </div>
         </div>
 
@@ -74,7 +74,7 @@ const EphraCRM: React.FC = () => {
         </nav>
 
         <button 
-          onClick={logout}
+          onClick={signOut}
           style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', backgroundColor: 'transparent', border: 'none', color: '#e74c3c', cursor: 'pointer', fontWeight: 'bold' }}
         >
           <LogOut size={20} /> Sair
