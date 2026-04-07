@@ -1,0 +1,54 @@
+.player {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 32px;
+  height: 32px;
+  transition: transform 0.1s linear;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.player-body {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  background-color: #3498db; /* Azul heroico */
+  border-radius: 4px;
+  border: 2px solid #2c3e50;
+}
+
+.player-head {
+  position: absolute;
+  top: -8px;
+  left: 4px;
+  width: 12px;
+  height: 12px;
+  background-color: #f1c40f; /* Cabelo dourado */
+  border: 2px solid #2c3e50;
+  border-radius: 50%;
+}
+
+.player-sword {
+  position: absolute;
+  right: -8px;
+  top: 4px;
+  width: 4px;
+  height: 16px;
+  background-color: #bdc3c7;
+  border: 1px solid #2c3e50;
+  transform: rotate(15deg);
+}
+
+.player-shield {
+  position: absolute;
+  left: -6px;
+  top: 6px;
+  width: 10px;
+  height: 12px;
+  background-color: #e74c3c;
+  border: 2px solid #2c3e50;
+  border-radius: 2px;
+}

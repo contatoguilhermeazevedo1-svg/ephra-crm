@@ -1,0 +1,45 @@
+.map {
+  display: flex;
+  flex-direction: column;
+  border: 4px solid #2c3e50;
+  background-color: #27ae60;
+}
+
+.map-row {
+  display: flex;
+}
+
+.tile {
+  width: 32px;
+  height: 32px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.grass {
+  background-color: #2ecc71;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.rock {
+  background-color: #7f8c8d;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+  border: 2px solid #34495e;
+}
+
+.goal {
+  background-color: #f1c40f;
+  animation: pulse 2s infinite;
+}
+
+.crown {
+  font-size: 20px;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.8; }
+  50% { opacity: 1; }
+  100% { opacity: 0.8; }
+}
