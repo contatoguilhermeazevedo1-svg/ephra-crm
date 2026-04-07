@@ -31,30 +31,38 @@ export interface Pipeline {
   stages: Stage[];
 }
 
+export interface Message {
+  id: string;
+  lead_id: string;
+  text: string;
+  sender: 'lead' | 'me' | 'ai';
+  created_at: string;
+}
+
 interface EphraStore {
   user: any | null;
   leads: Record<string, Lead>;
   pipelines: Record<string, Pipeline>;
   activePipelineId: string | null;
   isLoading: boolean;
-  connections: { whatsapp: boolean; instagram: boolean };
-  conversations: Record<string, any[]>;
+  connections: { 
+    whatsapp: boolean; 
+    instagram: boolean;
+    meta_phone_id?: string;
+    meta_token?: string;
+  };
+  conversations: Record<string, Message[]>;
   
-  // Auth Actions
-  signUp: (email: string, pass: string, name: string, role: string) => Promise<void>;
   signIn: (email: string, pass: string) => Promise<void>;
+  signUp: (email: string, pass: string, name: string, role: string) => Promise<void>;
   signOut: () => Promise<void>;
   checkUser: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  updatePassword: (newPass: string) => Promise<void>;
-  
-  // Data Actions ...
   fetchData: () => Promise<void>;
+  saveMetaConfig: (phoneId: string, token: string) => Promise<void>;
+  sendMessage: (leadId: string, text: string, sender?: 'me' | 'ai') => Promise<void>;
   moveLead: (leadId: string, fromStageId: string, toStageId: string, newIndex: number) => Promise<void>;
   addLead: (lead: Partial<Lead>, stageId: string) => Promise<void>;
   setActivePipeline: (id: string) => void;
-  setConnection: (type: 'whatsapp' | 'instagram', status: boolean) => void;
-  sendMessage: (leadId: string, text: string, sender?: 'me' | 'ai') => Promise<void>;
   addPipeline: (name: string) => Promise<void>;
   addStage: (pipelineId: string, title: string, color: string) => Promise<void>;
 }
@@ -68,30 +76,18 @@ export const useEphraStore = create<EphraStore>((set, get) => ({
   connections: { whatsapp: false, instagram: false },
   conversations: {},
 
-  signUp: async (email, password, name, role) => {
-    set({ isLoading: true });
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { name, role }
-      }
-    });
-    if (error) {
-      set({ isLoading: false });
-      throw error;
-    }
-    set({ user: data.user, isLoading: false });
+  signIn: async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    set({ user: data.user });
   },
 
-  signIn: async (email, password) => {
-    set({ isLoading: true });
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      set({ isLoading: false });
-      throw error;
-    }
-    set({ user: data.user, isLoading: false });
+  signUp: async (email, password, name, role) => {
+    const { data, error } = await supabase.auth.signUp({
+      email, password, options: { data: { name, role } }
+    });
+    if (error) throw error;
+    set({ user: data.user });
   },
 
   signOut: async () => {
@@ -104,39 +100,42 @@ export const useEphraStore = create<EphraStore>((set, get) => ({
     if (data.user) set({ user: data.user });
   },
 
-  resetPassword: async (email) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin,
-    });
+  saveMetaConfig: async (phoneId, token) => {
+    const { user } = get();
+    if (!user) return;
+    
+    // Salvar na tabela do usuário (perfil ou tabela dedicada)
+    const { error } = await supabase
+      .from('whatsapp_instances')
+      .upsert([{ 
+        user_id: user.id, 
+        instance_name: 'Meta Cloud API', 
+        api_key: token, 
+        webhook_url: phoneId, // Usando phoneId temporariamente como identificador
+        status: 'connected'
+      }]);
+    
     if (error) throw error;
-  },
-
-  updatePassword: async (newPassword) => {
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) throw error;
+    set(state => ({ connections: { ...state.connections, whatsapp: true, meta_phone_id: phoneId, meta_token: token } }));
   },
 
   fetchData: async () => {
     set({ isLoading: true });
     try {
       const { data: pData } = await supabase.from('pipelines').select('*, stages(*)');
-      if (!pData || pData.length === 0) {
-        set({ isLoading: false });
-        return;
-      }
-
       const { data: lData } = await supabase.from('leads').select('*');
       const { data: mData } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
+      const { data: cData } = await supabase.from('whatsapp_instances').select('*').limit(1);
 
       const leadsMap: Record<string, Lead> = {};
       lData?.forEach(l => leadsMap[l.id] = l);
 
       const pipelinesMap: Record<string, Pipeline> = {};
-      pData.forEach(p => {
+      pData?.forEach(p => {
         pipelinesMap[p.id] = { ...p, stages: (p.stages || []).sort((a: any, b: any) => a.order_index - b.order_index) };
       });
 
-      const convsMap: Record<string, any[]> = {};
+      const convsMap: Record<string, Message[]> = {};
       mData?.forEach(m => {
         if (!convsMap[m.lead_id]) convsMap[m.lead_id] = [];
         convsMap[m.lead_id].push(m);
@@ -146,12 +145,14 @@ export const useEphraStore = create<EphraStore>((set, get) => ({
         leads: leadsMap, 
         pipelines: pipelinesMap, 
         conversations: convsMap,
-        activePipelineId: pData[0]?.id, 
+        activePipelineId: pData?.[0]?.id || null, 
+        connections: { ...get().connections, whatsapp: cData?.[0]?.status === 'connected' },
         isLoading: false 
       });
     } catch (e) { set({ isLoading: false }); }
   },
 
+  // ... rest of actions ...
   moveLead: async (leadId, fromStageId, toStageId, newIndex) => {
     const { pipelines, activePipelineId } = get();
     if (!activePipelineId) return;
@@ -209,6 +210,5 @@ export const useEphraStore = create<EphraStore>((set, get) => ({
     await get().fetchData();
   },
 
-  setActivePipeline: (id) => set({ activePipelineId: id }),
-  setConnection: (type, status) => set((state) => ({ connections: { ...state.connections, [type]: status } })),
+  setActivePipeline: (id) => set({ activePipelineId: id })
 }));
